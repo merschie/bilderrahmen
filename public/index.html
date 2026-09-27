@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<title>Bilderrahmen</title>
+<style>
+  :root { --td: 1.6s; --kb: 22s; --fit: contain; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; cursor: none; -webkit-tap-highlight-color: transparent; }
+  body.ui { cursor: default; }
+
+  /* ---------- Bilder ---------- */
+  #stage { position: absolute; inset: 0; perspective: 1400px; }
+  .slide {
+    position: absolute; inset: 0; overflow: hidden; background: #000;
+    animation-duration: var(--td); animation-fill-mode: both;
+    animation-timing-function: cubic-bezier(.45, 0, .2, 1);
+    will-change: transform, opacity;
+  }
+  .slide .bg {
+    position: absolute; inset: -60px; background-size: cover; background-position: center;
+    filter: blur(40px) brightness(.45) saturate(1.2); transform: scale(1.15);
+  }
+  .no-bg .slide .bg, .fit-cover .slide .bg { display: none; }
+  .slide img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: var(--fit);
+    transform-origin: center;
+  }
+  .kb .slide img { animation: var(--kb) linear both; }
+  .kb .slide img.kb-in  { animation-name: kbIn; }
+  .kb .slide img.kb-out { animation-name: kbOut; }
+  .paused .slide img { animation-play-state: paused !important; }
+  @keyframes kbIn  { from { transform: scale(1) translate(0,0); } to { transform: scale(1.12) translate(var(--kx), var(--ky)); } }
+  @keyframes kbOut { from { transform: scale(1.12) translate(var(--kx), var(--ky)); } to { transform: scale(1) translate(0,0); } }
+
+  /* ---------- Übergänge ---------- */
+  .enter-fade   { animation-name: fadeIn; }
+  .leave-fade   { animation-name: fadeOut; }
+  @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+  .enter-slide  { animation-name: slideIn; }
+  .leave-slide  { animation-name: slideOut; }
+  @keyframes slideIn  { from { transform: translateX(100%); } to { transform: none; } }
+  @keyframes slideOut { from { transform: none; opacity: 1; } to { transform: translateX(-35%) scale(.92); opacity: 0; } }
+
+  .enter-zoom   { animation-name: zoomIn; }
+  .leave-zoom   { animation-name: zoomOut; }
+  @keyframes zoomIn  { from { transform: scale(1.35); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes zoomOut { from { transform: none; opacity: 1; } to { transform: scale(.8); opacity: 0; } }
+
+  .enter-blur   { animation-name: blurIn; }
+  .leave-blur   { animation-name: blurOut; }
+  @keyframes blurIn  { from { filter: blur(40px) brightness(1.6); opacity: 0; transform: scale(1.08); } to { filter: none; opacity: 1; transform: none; } }
+  @keyframes blurOut { from { filter: none; opacity: 1; } to { filter: blur(40px); opacity: 0; } }
+
+  .enter-rise   { animation-name: riseIn; }
+  .leave-rise   { animation-name: riseOut; }
+  @keyframes riseIn  { from { transform: translateY(12%) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes riseOut { from { transform: none; opacity: 1; } to { transform: translateY(-8%) scale(1.03); opacity: 0; } }
+
+  .enter-rotate { animation-name: rotateIn; }
+  .leave-rotate { animation-name: rotateOut; }
+  @keyframes rotateIn  { from { transform: rotate(-6deg) scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes rotateOut { from { transform: none; opacity: 1; } to { transform: rotate(5deg) scale(1.25); opacity: 0; } }
+
+  /* ---------- Einblendungen ---------- */
+  .overlay { position: absolute; z-index: 10; pointer-events: none; text-shadow: 0 2px 14px rgba(0,0,0,.75), 0 0 2px rgba(0,0,0,.5); }
+  .clock { right: 3.5vw; bottom: 4vh; text-align: right; }
+  .clock .time { font-size: clamp(2.2rem, 7vw, 6.5rem); font-weight: 200; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .clock .date { font-size: clamp(.9rem, 1.7vw, 1.6rem); font-weight: 300; opacity: .9; margin-top: .35em; }
+  .info { left: 3.5vw; bottom: 4vh; max-width: 55vw; }
+  .info .when { font-size: clamp(1rem, 2vw, 1.8rem); font-weight: 400; }
+  .info .where { font-size: clamp(.8rem, 1.3vw, 1.15rem); font-weight: 300; opacity: .8; margin-top: .25em; }
+  .info.animate > * { animation: infoIn 1s cubic-bezier(.2, .7, .2, 1) both; }
+  .info.animate > .where { animation-delay: .15s; }
+  @keyframes infoIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  .message {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: .8rem; text-align: center; padding: 2rem; z-index: 5;
+  }
+  .message h1 { font-weight: 300; font-size: clamp(1.4rem, 3vw, 2.4rem); }
+  .message p { color: #aaa; max-width: 36rem; line-height: 1.5; }
+  .message a { color: #fff; }
+  .spinner { width: 42px; height: 42px; border: 3px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- Bedienleiste (bei Mausbewegung / Tippen) ---------- */
+  .controls {
+    position: absolute; left: 50%; top: 4vh; z-index: 20; display: flex; gap: .5rem; padding: .45rem;
+    background: rgba(20,20,20,.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-radius: 999px; transform: translate(-50%, -20px); opacity: 0; pointer-events: none;
+    transition: opacity .3s, transform .3s;
+  }
+  body.ui .controls { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .controls button, .controls a {
+    width: 3rem; height: 3rem; border-radius: 50%; border: 0; background: transparent; color: #fff;
+    font-size: 1.3rem; display: grid; place-items: center; cursor: pointer; text-decoration: none;
+  }
+  .controls button:hover, .controls a:hover { background: rgba(255,255,255,.15); }
+  .controls svg { width: 1.4rem; height: 1.4rem; fill: currentColor; }
+  .pause-badge {
+    position: absolute; top: 4vh; left: 3.5vw; z-index: 10; padding: .35em .9em; border-radius: 999px;
+    background: rgba(0,0,0,.5); font-size: .95rem; opacity: 0; transition: opacity .3s;
+  }
+  .paused .pause-badge { opacity: 1; }
+  .offline { position: absolute; top: 4vh; right: 3.5vw; z-index: 10; font-size: .85rem; color: #fbb; opacity: 0; transition: opacity .3s; }
+  .disconnected .offline { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="overlay info" id="info" hidden><div class="when" id="when"></div><div class="where" id="where"></div></div>
+<div class="overlay clock" id="clock" hidden><div class="time" id="time"></div><div class="date" id="date"></div></div>
+<div class="pause-badge">⏸ Pausiert</div>
+<div class="offline">● Verbindung getrennt</div>
+
+<nav class="controls" id="controls">
+  <button data-action="prev" title="Vorheriges Bild"><svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg></button>
+  <button data-action="toggle" title="Pause / Weiter" id="playBtn"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></button>
+  <button data-action="next" title="Nächstes Bild"><svg viewBox="0 0 24 24"><path d="M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z"/></svg></button>
+  <button id="fsBtn" title="Vollbild"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zM14 5v2h3v3h2V5z"/></svg></button>
+  <a href="/settings" title="Einstellungen"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.4 2.9a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1L11 21h4l.4-2.9c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></a>
+</nav>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage");
+  const root = document.documentElement;
+  const PLAY_ICON = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  const PAUSE_ICON = '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
+
+  let settings = null;
+  let current = null;      // aktuelles .slide-Element
+  let shownSeq = -1;       // zuletzt angezeigte Nachricht
+  let wantedSeq = -1;      // zuletzt empfangene Nachricht
+  let lastShow = null;
+  let status = { scanning: true, found: 0, total: 0, selected: 0 };
+
+  // ---------- Einstellungen anwenden ----------
+  function applySettings(s) {
+    settings = s;
+    root.style.setProperty("--td", s.transitionDuration + "s");
+    root.style.setProperty("--kb", (s.interval + s.transitionDuration * 2) + "s");
+    root.style.setProperty("--fit", s.fit);
+    document.body.classList.toggle("kb", s.kenBurns);
+    document.body.classList.toggle("fit-cover", s.fit === "cover");
+    document.body.classList.toggle("no-bg", s.background === "black");
+    $("clock").hidden = !s.showClock;
+    updateInfo(lastShow?.photo, false);
+  }
+
+  // ---------- Anzeige ----------
+  function preload(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => resolve(img));
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  function showMessage(html) {
+    let el = stage.querySelector(".message");
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "message";
+      stage.appendChild(el);
+    }
+    el.innerHTML = html;
+  }
+
+  function renderEmpty() {
+    if (current) {
+      const old = current;
+      old.className = "slide leave-fade";
+      setTimeout(() => old.remove(), 2000);
+      current = null;
+    }
+    $("info").hidden = true;
+    if (status.error) {
+      showMessage(`<h1>Fotoordner nicht erreichbar</h1><p>${status.error}</p>`);
+    } else if (status.scanning && !status.total) {
+      showMessage(`<div class="spinner"></div><h1>Fotos werden eingelesen …</h1><p>${status.found.toLocaleString("de-DE")} gefunden</p>`);
+    } else if (!status.total) {
+      showMessage(`<h1>Keine Fotos gefunden</h1><p>Im eingebundenen Fotoordner liegen keine Bilder (JPG, PNG, WebP, AVIF, GIF, TIFF).</p>`);
+    } else {
+      showMessage(`<h1>Keine Fotos ausgewählt</h1><p>Wähle in den <a href="/settings">Einstellungen</a> mindestens einen Ordner aus.</p>`);
+    }
+  }
+
+  async function handleShow(msg) {
+    lastShow = msg;
+    wantedSeq = msg.seq;
+    setPaused(msg.paused);
+    if (!msg.photo) return renderEmpty();
+    if (msg.seq === shownSeq) return;
+
+    try {
+      await preload(msg.photo.url);
+    } catch {
+      return; // Bild nicht ladbar – das nächste kommt vom Server
+    }
+    if (msg.seq !== wantedSeq) return; // inzwischen überholt
+
+    stage.querySelector(".message")?.remove();
+    const first = !current;
+    const t = msg.transition;
+
+    const slide = document.createElement("div");
+    slide.className = first ? "slide enter-fade" : `slide enter-${t}`;
+    const bg = document.createElement("div");
+    bg.className = "bg";
+    bg.style.backgroundImage = `url("${msg.photo.url}")`;
+    const img = document.createElement("img");
+    img.src = msg.photo.url;
+    img.alt = "";
+    img.className = msg.kenBurns.zoomIn ? "kb-in" : "kb-out";
+    img.style.setProperty("--kx", msg.kenBurns.x + "%");
+    img.style.setProperty("--ky", msg.kenBurns.y + "%");
+    // Wer später dazukommt, steigt mitten in die Bewegung ein
+    if (msg.elapsed > 500) img.style.animationDelay = `-${msg.elapsed / 1000}s`;
+    slide.append(bg, img);
+    stage.appendChild(slide);
+
+    if (current) {
+      const old = current;
+      old.className = `slide leave-${t}`;
+      old.addEventListener("animationend", (e) => { if (e.target === old) old.remove(); });
+      setTimeout(() => old.remove(), (settings?.transitionDuration || 2) * 1000 + 500);
+    }
+    current = slide;
+    shownSeq = msg.seq;
+    updateInfo(msg.photo, true);
+
+    if (msg.next) preload(msg.next.url).catch(() => {});
+  }
+
+  function formatTaken(photo) {
+    const d = new Date(photo.taken);
+    return d.toLocaleDateString("de-DE", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" });
+  }
+
+  function updateInfo(photo, animate) {
+    const info = $("info");
+    if (!photo || !settings?.showInfo) { info.hidden = true; return; }
+    info.hidden = false;
+    $("when").textContent = formatTaken(photo);
+    $("where").textContent = photo.folder ? photo.folder.split("/").join(" › ") : "";
+    if (animate) {
+      info.classList.remove("animate");
+      void info.offsetWidth;
+      info.classList.add("animate");
+    }
+  }
+
+  function setPaused(paused) {
+    document.body.classList.toggle("paused", paused);
+    $("playBtn").innerHTML = paused ? PLAY_ICON : PAUSE_ICON;
+  }
+
+  // ---------- Verbindung zum Server ----------
+  function connect() {
+    const es = new EventSource("/api/events?role=frame");
+    es.onopen = () => document.body.classList.remove("disconnected");
+    es.onerror = () => document.body.classList.add("disconnected");
+    es.addEventListener("settings", (e) => applySettings(JSON.parse(e.data)));
+    es.addEventListener("show", (e) => handleShow(JSON.parse(e.data)));
+    es.addEventListener("pause", (e) => setPaused(JSON.parse(e.data).paused));
+    es.addEventListener("status", (e) => {
+      status = JSON.parse(e.data);
+      if (lastShow && !lastShow.photo) renderEmpty();
+    });
+  }
+  connect();
+
+  function control(action) {
+    fetch("/api/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+  }
+
+  // ---------- Uhr ----------
+  function tick() {
+    const now = new Date();
+    $("time").textContent = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    $("date").textContent = now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ---------- Bedienung ----------
+  let uiTimer;
+  function showUi() {
+    document.body.classList.add("ui");
+    clearTimeout(uiTimer);
+    uiTimer = setTimeout(() => document.body.classList.remove("ui"), 3500);
+  }
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) root.requestFullscreen?.().catch(() => {});
+    else document.exitFullscreen?.();
+  }
+
+  document.addEventListener("mousemove", showUi);
+  document.querySelectorAll("[data-action]").forEach((b) =>
+    b.addEventListener("click", (e) => { e.stopPropagation(); control(b.dataset.action); showUi(); }));
+  $("fsBtn").addEventListener("click", (e) => { e.stopPropagation(); toggleFullscreen(); });
+  document.addEventListener("dblclick", toggleFullscreen);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight") control("next");
+    else if (e.key === "ArrowLeft") control("prev");
+    else if (e.key === " ") { e.preventDefault(); control("toggle"); }
+    else if (e.key === "f") toggleFullscreen();
+  });
+
+  let touch = null;
+  document.addEventListener("touchstart", (e) => { touch = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (!touch) return;
+    const dx = e.changedTouches[0].clientX - touch.x;
+    const dy = e.changedTouches[0].clientY - touch.y;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) control(dx < 0 ? "next" : "prev");
+    else if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && !e.target.closest(".controls")) showUi();
+    touch = null;
+  });
+
+  // ---------- Bildschirm wach halten ----------
+  async function keepAwake() { try { await navigator.wakeLock?.request("screen"); } catch {} }
+  keepAwake();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) keepAwake(); });
+})();
+</script>
+</body>
+</html>

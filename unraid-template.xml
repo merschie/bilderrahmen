@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>bilderrahmen</Name>
+  <Repository>merschie/bilderrahmen:latest</Repository>
+  <Registry>https://hub.docker.com/r/merschie/bilderrahmen</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/merschie/bilderrahmen/issues</Support>
+  <Project>https://github.com/merschie/bilderrahmen</Project>
+  <TemplateURL>https://raw.githubusercontent.com/merschie/bilderrahmen/main/unraid-template.xml</TemplateURL>
+  <Overview>Digitaler Bilderrahmen: zeigt Fotos aus einem Ordner (inkl. Unterordnern) als Diashow im Browser. Alle verbundenen Rahmen zeigen synchron dasselbe Bild. Einstellungen unter /settings.</Overview>
+  <Category>MediaApp:Photos</Category>
+  <WebUI>http://[IP]:[PORT:8080]/settings</WebUI>
+  <Icon/>
+  <ExtraParams/>
+  <PostArgs/>
+  <Config Name="Fotoordner" Target="/photos" Default="/mnt/user/Photos/" Mode="ro" Description="Ordner mit deinen Fotos. Unterordner werden automatisch eingelesen und können in den Einstellungen einzeln ausgewählt werden." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/Photos/</Config>
+  <Config Name="Konfiguration" Target="/config" Default="/mnt/user/appdata/bilderrahmen" Mode="rw" Description="Hier werden Einstellungen und der Foto-Index gespeichert." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/bilderrahmen</Config>
+  <Config Name="Web-Port" Target="8080" Default="8080" Mode="tcp" Description="Port für Rahmen (/) und Einstellungen (/settings)." Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Passwort für Einstellungen" Target="ADMIN_PASSWORD" Default="" Mode="" Description="Optional. Schützt /settings (Benutzername beliebig). Leer = kein Passwort." Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="Neu einlesen (Minuten)" Target="RESCAN_MINUTES" Default="30" Mode="" Description="Wie oft der Fotoordner nach neuen Bildern durchsucht wird. 0 = nur beim Start und per Knopf." Type="Variable" Display="advanced" Required="false" Mask="false">30</Config>
+  <Config Name="Maximale Bildgröße (Pixel)" Target="MAX_IMAGE_SIZE" Default="2560" Mode="" Description="Fotos werden für die Anzeige auf diese Kantenlänge verkleinert. 0 = Originaldateien ausliefern." Type="Variable" Display="advanced" Required="false" Mask="false">2560</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="Benutzer-ID (Unraid: 99 = nobody)" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Gruppen-ID (Unraid: 100 = users)" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+</Container>

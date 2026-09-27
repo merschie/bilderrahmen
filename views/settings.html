@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bilderrahmen – Einstellungen</title>
+<style>
+  :root {
+    --bg: #f4f3f1; --card: #ffffff; --text: #1d1b19; --muted: #77716b; --border: #e6e2dd;
+    --soft: #f1eeea; --accent: #d9622b; --accent-soft: #fbe9df; --ok: #2f8f5b;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121110; --card: #1c1a18; --text: #f1eeea; --muted: #a09890; --border: #2e2b28;
+      --soft: #262320; --accent: #ef8150; --accent-soft: #3a2519; --ok: #5cc48a;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  header {
+    position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 1rem;
+    padding: .8rem 1.25rem; background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0; font-size: 1.1rem; font-weight: 650; flex: 1; }
+  header a { color: var(--accent); text-decoration: none; font-weight: 550; white-space: nowrap; }
+  .saved { font-size: .85rem; color: var(--ok); opacity: 0; transition: opacity .3s; white-space: nowrap; }
+  .saved.visible { opacity: 1; }
+  .saved.error { color: #d33; }
+
+  main { max-width: 880px; margin: 0 auto; padding: 1.25rem 1rem 4rem; display: grid; gap: 1.1rem; }
+  section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.2rem 1.3rem; box-shadow: var(--shadow); }
+  section > h2 { margin: 0 0 .2rem; font-size: 1.05rem; font-weight: 650; }
+  section > .hint { margin: 0 0 1rem; color: var(--muted); font-size: .9rem; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-top: 1px solid var(--border); }
+  .row:first-of-type { border-top: 0; }
+  .row .label strong { display: block; font-weight: 550; }
+  .row .label span { color: var(--muted); font-size: .88rem; }
+
+  /* ---------- Jetzt läuft ---------- */
+  .now { display: grid; grid-template-columns: 220px 1fr; gap: 1.2rem; align-items: center; }
+  .preview { position: relative; aspect-ratio: 16/10; border-radius: 12px; overflow: hidden; background: #000; }
+  .preview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: fadeIn .8s both; }
+  .now-meta .title { font-weight: 600; font-size: 1.05rem; word-break: break-word; }
+  .now-meta .sub { color: var(--muted); font-size: .9rem; }
+  .player { display: flex; gap: .4rem; margin: .8rem 0 .6rem; }
+  .player button {
+    width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 1px solid var(--border); background: var(--soft);
+    color: var(--text); display: grid; place-items: center; cursor: pointer; transition: transform .15s, background .15s;
+  }
+  .player button:hover { background: var(--accent-soft); }
+  .player button:active { transform: scale(.92); }
+  .player button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .player svg { width: 1.2rem; height: 1.2rem; fill: currentColor; }
+  .lib { color: var(--muted); font-size: .88rem; display: flex; flex-wrap: wrap; gap: .3rem .9rem; align-items: center; }
+  .link-btn { border: 0; background: none; color: var(--accent); font: inherit; cursor: pointer; padding: 0; font-weight: 550; }
+  .link-btn:disabled { color: var(--muted); cursor: default; }
+  @media (max-width: 600px) { .now { grid-template-columns: 1fr; } }
+
+  /* ---------- Ordnerbaum ---------- */
+  .tree { list-style: none; margin: 0; padding: 0; }
+  .tree ul { list-style: none; margin: 0; padding-left: 1.4rem; }
+  .node { display: flex; align-items: center; gap: .45rem; padding: .28rem .4rem; border-radius: 8px; }
+  .node:hover { background: var(--soft); }
+  .node label { flex: 1; display: flex; align-items: center; gap: .55rem; cursor: pointer; min-width: 0; }
+  .node label span.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .node .count { color: var(--muted); font-size: .82rem; font-variant-numeric: tabular-nums; }
+  .node.root { font-weight: 600; border-bottom: 1px solid var(--border); border-radius: 0; margin-bottom: .3rem; padding-bottom: .5rem; }
+  .twisty {
+    width: 1.4rem; height: 1.4rem; border: 0; background: none; color: var(--muted); cursor: pointer;
+    display: grid; place-items: center; border-radius: 6px; transition: transform .2s; flex: none;
+  }
+  .twisty.open { transform: rotate(90deg); }
+  .twisty.empty { visibility: hidden; }
+  input[type=checkbox] { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); flex: none; }
+  .selection-summary { margin-top: .8rem; font-size: .9rem; color: var(--muted); }
+  .selection-summary.warn { color: #d33; font-weight: 550; }
+  .tree-wrap { max-height: 420px; overflow: auto; }
+
+  /* ---------- Auswahl-Kacheln ---------- */
+  .segmented { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .5rem; }
+  .segmented label {
+    border: 1.5px solid var(--border); border-radius: 12px; padding: .7rem .8rem; cursor: pointer;
+    display: flex; gap: .6rem; align-items: flex-start; transition: border-color .15s, background .15s;
+  }
+  .segmented label:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .segmented input { display: none; }
+  .segmented label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .segmented .icon { font-size: 1.3rem; line-height: 1.2; }
+  .segmented strong { display: block; font-weight: 550; }
+  .segmented small { color: var(--muted); }
+
+  .slider { display: flex; align-items: center; gap: 1rem; }
+  .slider input { flex: 1; accent-color: var(--accent); }
+  .slider output { min-width: 7.5rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Übergänge mit Mini-Vorschau ---------- */
+  .transitions { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .6rem; }
+  .transitions label { cursor: pointer; border: 1.5px solid var(--border); border-radius: 12px; padding: .45rem; text-align: center; transition: border-color .15s, background .15s; }
+  .transitions input { display: none; }
+  .transitions label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .transitions span { display: block; font-size: .88rem; font-weight: 550; margin-top: .35rem; }
+  .demo { position: relative; aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; background: #000; perspective: 400px; }
+  .demo div { position: absolute; inset: 0; animation-duration: 1.1s; animation-fill-mode: both; animation-timing-function: cubic-bezier(.45,0,.2,1); }
+  .demo .a { background: linear-gradient(135deg, #f6a15b, #c4456d); }
+  .demo .b { background: linear-gradient(135deg, #4fb3c9, #3d5fae); }
+  .demo .b::after { content: ""; position: absolute; left: 18%; bottom: 20%; width: 34%; height: 34%; border-radius: 50%; background: rgba(255,255,255,.55); }
+  .demo .a::after { content: ""; position: absolute; right: 16%; top: 18%; width: 40%; height: 30%; border-radius: 6px; background: rgba(255,255,255,.5); }
+  .demo.random { display: grid; place-items: center; background: var(--soft); color: var(--accent); font-size: 1.8rem; }
+
+  @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes slideIn  { from { transform: translateX(100%); } to { transform: none; } }
+  @keyframes slideOut { from { transform: none; opacity: 1; } to { transform: translateX(-35%) scale(.92); opacity: 0; } }
+  @keyframes zoomIn  { from { transform: scale(1.35); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes zoomOut { from { transform: none; opacity: 1; } to { transform: scale(.8); opacity: 0; } }
+  @keyframes blurIn  { from { filter: blur(12px) brightness(1.6); opacity: 0; transform: scale(1.08); } to { filter: none; opacity: 1; transform: none; } }
+  @keyframes blurOut { from { filter: none; opacity: 1; } to { filter: blur(12px); opacity: 0; } }
+  @keyframes riseIn  { from { transform: translateY(12%) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes riseOut { from { transform: none; opacity: 1; } to { transform: translateY(-8%) scale(1.03); opacity: 0; } }
+  @keyframes rotateIn  { from { transform: rotate(-6deg) scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes rotateOut { from { transform: none; opacity: 1; } to { transform: rotate(5deg) scale(1.25); opacity: 0; } }
+
+  /* ---------- Schalter ---------- */
+  .switch { position: relative; width: 46px; height: 26px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span { position: absolute; inset: 0; background: var(--border); border-radius: 999px; cursor: pointer; transition: background .2s; }
+  .switch span::after {
+    content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s cubic-bezier(.3,.7,.3,1.3);
+  }
+  .switch input:checked + span { background: var(--accent); }
+  .switch input:checked + span::after { transform: translateX(20px); }
+  .pills { display: inline-flex; background: var(--soft); border-radius: 999px; padding: 3px; }
+  .pills input { display: none; }
+  .pills label { padding: .3rem .85rem; border-radius: 999px; cursor: pointer; font-size: .9rem; color: var(--muted); transition: background .15s, color .15s; white-space: nowrap; }
+  .pills label:has(input:checked) { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 550; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🖼️ Bilderrahmen</h1>
+  <span class="saved" id="saved">✓ Gespeichert</span>
+  <a href="/" target="_blank">Rahmen öffnen ↗</a>
+</header>
+
+<main>
+  <!-- Jetzt läuft -->
+  <section>
+    <div class="now">
+      <div class="preview" id="preview"></div>
+      <div class="now-meta">
+        <div class="title" id="nowTitle">–</div>
+        <div class="sub" id="nowSub"></div>
+        <div class="player">
+          <button data-action="prev" title="Vorheriges Bild"><svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg></button>
+          <button data-action="toggle" class="primary" id="playBtn" title="Pause / Weiter"></button>
+          <button data-action="next" title="Nächstes Bild"><svg viewBox="0 0 24 24"><path d="M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z"/></svg></button>
+        </div>
+        <div class="lib">
+          <span id="libStatus">–</span>
+          <span id="frames"></span>
+          <button class="link-btn" id="rescan">Neu einlesen</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ordner -->
+  <section>
+    <h2>Ordner</h2>
+    <p class="hint">Welche Ordner sollen gezeigt werden? Ein ausgewählter Ordner schließt alle Unterordner mit ein.</p>
+    <div class="tree-wrap"><ul class="tree" id="tree"></ul></div>
+    <div class="selection-summary" id="selSummary"></div>
+  </section>
+
+  <!-- Wiedergabe -->
+  <section>
+    <h2>Wiedergabe</h2>
+    <p class="hint">Reihenfolge und Anzeigedauer gelten für alle Rahmen gleichzeitig.</p>
+    <div class="segmented" id="order">
+      <label><input type="radio" name="order" value="shuffle"><span class="icon">🔀</span><span><strong>Zufällig</strong><small>Jedes Foto einmal pro Runde</small></span></label>
+      <label><input type="radio" name="order" value="date_desc"><span class="icon">🕓</span><span><strong>Neueste zuerst</strong><small>Nach Aufnahmedatum</small></span></label>
+      <label><input type="radio" name="order" value="date_asc"><span class="icon">📜</span><span><strong>Älteste zuerst</strong><small>Nach Aufnahmedatum</small></span></label>
+      <label><input type="radio" name="order" value="name"><span class="icon">🔤</span><span><strong>Nach Name</strong><small>Ordner & Dateiname</small></span></label>
+    </div>
+    <div class="row" style="margin-top:.6rem">
+      <div class="label"><strong>Anzeigedauer</strong><span>Wie lange jedes Foto zu sehen ist</span></div>
+    </div>
+    <div class="slider">
+      <input type="range" id="interval" min="0" step="1">
+      <output id="intervalOut"></output>
+    </div>
+  </section>
+
+  <!-- Übergang -->
+  <section>
+    <h2>Übergang</h2>
+    <p class="hint">Fahre mit der Maus über eine Kachel, um die Animation zu sehen.</p>
+    <div class="transitions" id="transitions"></div>
+    <div class="row" style="margin-top:.8rem">
+      <div class="label"><strong>Dauer des Übergangs</strong></div>
+    </div>
+    <div class="slider">
+      <input type="range" id="tdur" min="0.3" max="4" step="0.1">
+      <output id="tdurOut"></output>
+    </div>
+  </section>
+
+  <!-- Darstellung -->
+  <section>
+    <h2>Darstellung</h2>
+    <div class="row">
+      <div class="label"><strong>Bildgröße</strong><span>Ganzes Foto zeigen oder Bildschirm ausfüllen</span></div>
+      <div class="pills">
+        <label><input type="radio" name="fit" value="contain">Ganzes Bild</label>
+        <label><input type="radio" name="fit" value="cover">Füllen</label>
+      </div>
+    </div>
+    <div class="row">
+      <div class="label"><strong>Hintergrund</strong><span>Für Fotos, die den Bildschirm nicht füllen</span></div>
+      <div class="pills">
+        <label><input type="radio" name="background" value="blur">Unscharf</label>
+        <label><input type="radio" name="background" value="black">Schwarz</label>
+      </div>
+    </div>
+    <div class="row">
+      <div class="label"><strong>Langsame Kamerafahrt</strong><span>Sanfter Zoom und Schwenk während der Anzeige (Ken-Burns-Effekt)</span></div>
+      <label class="switch"><input type="checkbox" id="kenBurns"><span></span></label>
+    </div>
+    <div class="row">
+      <div class="label"><strong>Uhrzeit & Datum</strong><span>Unten rechts einblenden</span></div>
+      <label class="switch"><input type="checkbox" id="showClock"><span></span></label>
+    </div>
+    <div class="row">
+      <div class="label"><strong>Aufnahmedatum & Ordner</strong><span>Unten links einblenden</span></div>
+      <label class="switch"><input type="checkbox" id="showInfo"><span></span></label>
+    </div>
+  </section>
+</main>
+
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  const INTERVALS = [5, 8, 10, 15, 20, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1800, 3600];
+  const TRANSITIONS = [
+    ["random", "Zufällig"], ["fade", "Überblenden"], ["slide", "Schieben"], ["zoom", "Zoom"],
+    ["blur", "Unschärfe"], ["rise", "Aufsteigen"], ["rotate", "Drehen"],
+  ];
+  const ANIM = {
+    fade: ["fadeOut", "fadeIn"], slide: ["slideOut", "slideIn"], zoom: ["zoomOut", "zoomIn"],
+    blur: ["blurOut", "blurIn"], rise: ["riseOut", "riseIn"], rotate: ["rotateOut", "rotateIn"],
+  };
+  const PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  const PAUSE = '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
+
+  let settings = await fetch("/api/settings").then((r) => r.json());
+  let tree = null;
+  const expanded = new Set();
+
+  // ---------- Speichern ----------
+  let saveTimer;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      const el = $("saved");
+      try {
+        const res = await fetch("/api/settings", {
+          method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings),
+        });
+        if (!res.ok) throw new Error(res.status);
+        settings = await res.json();
+        el.textContent = "✓ Gespeichert";
+        el.classList.remove("error");
+      } catch (e) {
+        el.textContent = "Speichern fehlgeschlagen";
+        el.classList.add("error");
+      }
+      el.classList.add("visible");
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove("visible"), 1800);
+    }, 350);
+  }
+  function set(key, value) { settings[key] = value; save(); }
+
+  // ---------- Ordnerbaum ----------
+  function isCovered(path) {
+    // Ist der Ordner selbst oder ein übergeordneter Ordner ausgewählt?
+    return settings.folders.some((f) => path === f || path.startsWith(f + "/"));
+  }
+  function hasSelectedBelow(path) {
+    return settings.folders.some((f) => f.startsWith(path + "/"));
+  }
+
+  function renderTree() {
+    const ul = $("tree");
+    ul.innerHTML = "";
+    if (!tree) return;
+    const rootLi = document.createElement("li");
+    rootLi.innerHTML = `<div class="node root"><span class="twisty empty"></span>
+      <label><input type="checkbox" id="allFolders"><span class="name">Alle Fotos</span></label>
+      <span class="count">${tree.count.toLocaleString("de-DE")}</span></div>`;
+    ul.appendChild(rootLi);
+    const all = rootLi.querySelector("input");
+    all.checked = settings.allFolders;
+    all.addEventListener("change", () => { set("allFolders", all.checked); renderTree(); });
+    for (const child of tree.children) ul.appendChild(renderNode(child));
+    updateSummary();
+  }
+
+  function renderNode(node) {
+    const li = document.createElement("li");
+    const row = document.createElement("div");
+    row.className = "node";
+    const twisty = document.createElement("button");
+    twisty.className = "twisty" + (node.children.length ? "" : " empty") + (expanded.has(node.path) ? " open" : "");
+    twisty.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24"><path fill="currentColor" d="M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z"/></svg>';
+    twisty.type = "button";
+
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    const covered = settings.allFolders || isCovered(node.path);
+    const ancestorCovered = settings.allFolders || settings.folders.some((f) => node.path.startsWith(f + "/"));
+    cb.checked = covered;
+    cb.disabled = ancestorCovered;
+    cb.indeterminate = !covered && hasSelectedBelow(node.path);
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = node.name;
+    label.append(cb, name);
+    const count = document.createElement("span");
+    count.className = "count";
+    count.textContent = node.count.toLocaleString("de-DE");
+    row.append(twisty, label, count);
+    li.appendChild(row);
+
+    cb.addEventListener("change", () => {
+      if (cb.checked) {
+        settings.folders = settings.folders.filter((f) => !f.startsWith(node.path + "/"));
+        settings.folders.push(node.path);
+      } else {
+        settings.folders = settings.folders.filter((f) => f !== node.path);
+      }
+      save();
+      renderTree();
+    });
+
+    if (node.children.length) {
+      const sub = document.createElement("ul");
+      sub.hidden = !expanded.has(node.path);
+      for (const c of node.children) sub.appendChild(renderNode(c));
+      li.appendChild(sub);
+      twisty.addEventListener("click", () => {
+        const open = !expanded.has(node.path);
+        open ? expanded.add(node.path) : expanded.delete(node.path);
+        twisty.classList.toggle("open", open);
+        sub.hidden = !open;
+      });
+    }
+    return li;
+  }
+
+  function countSelected() {
+    if (!tree) return 0;
+    if (settings.allFolders) return tree.count;
+    let n = 0;
+    const walk = (node) => {
+      if (settings.folders.includes(node.path)) { n += node.count; return; }
+      node.children.forEach(walk);
+    };
+    tree.children.forEach(walk);
+    return n;
+  }
+
+  function updateSummary() {
+    const el = $("selSummary");
+    const n = countSelected();
+    el.classList.toggle("warn", n === 0);
+    el.textContent = n === 0
+      ? "Keine Fotos ausgewählt – bitte mindestens einen Ordner wählen."
+      : `${n.toLocaleString("de-DE")} Fotos ausgewählt`;
+  }
+
+  async function loadTree() {
+    tree = await fetch("/api/folders").then((r) => r.json());
+    if (!expanded.size) {
+      // Ordner mit ausgewählten Unterordnern aufklappen
+      for (const f of settings.folders) {
+        const parts = f.split("/");
+        for (let i = 1; i < parts.length; i++) expanded.add(parts.slice(0, i).join("/"));
+      }
+    }
+    renderTree();
+  }
+
+  // ---------- Wiedergabe ----------
+  function formatInterval(s) {
+    if (s < 60) return `${s} Sekunden`;
+    const m = s / 60;
+    if (m === 1) return "1 Minute";
+    if (m < 60) return `${m.toLocaleString("de-DE")} Minuten`;
+    return "1 Stunde";
+  }
+  document.querySelectorAll('input[name=order]').forEach((r) => {
+    r.checked = r.value === settings.order;
+    r.addEventListener("change", () => set("order", r.value));
+  });
+  const interval = $("interval");
+  interval.max = INTERVALS.length - 1;
+  const nearest = INTERVALS.reduce((best, v, i) => Math.abs(v - settings.interval) < Math.abs(INTERVALS[best] - settings.interval) ? i : best, 0);
+  interval.value = nearest;
+  $("intervalOut").textContent = formatInterval(INTERVALS[nearest]);
+  interval.addEventListener("input", () => {
+    const v = INTERVALS[interval.value];
+    $("intervalOut").textContent = formatInterval(v);
+    set("interval", v);
+  });
+
+  // ---------- Übergänge ----------
+  const tGrid = $("transitions");
+  for (const [value, label] of TRANSITIONS) {
+    const el = document.createElement("label");
+    el.innerHTML = value === "random"
+      ? `<input type="radio" name="transition" value="${value}"><div class="demo random">✦</div><span>${label}</span>`
+      : `<input type="radio" name="transition" value="${value}"><div class="demo"><div class="a"></div><div class="b"></div></div><span>${label}</span>`;
+    const input = el.querySelector("input");
+    input.checked = settings.transition === value;
+    input.addEventListener("change", () => { set("transition", value); play(el, value); });
+    el.addEventListener("mouseenter", () => play(el, value));
+    tGrid.appendChild(el);
+  }
+  function play(el, value) {
+    if (!ANIM[value]) return;
+    const a = el.querySelector(".a"), b = el.querySelector(".b");
+    const dur = settings.transitionDuration + "s";
+    for (const [node, name] of [[a, ANIM[value][0]], [b, ANIM[value][1]]]) {
+      node.style.animation = "none";
+      void node.offsetWidth;
+      node.style.animation = `${name} ${dur} cubic-bezier(.45,0,.2,1) both`;
+    }
+  }
+
+  const tdur = $("tdur");
+  tdur.value = settings.transitionDuration;
+  $("tdurOut").textContent = `${(+settings.transitionDuration).toLocaleString("de-DE")} Sekunden`;
+  tdur.addEventListener("input", () => {
+    $("tdurOut").textContent = `${(+tdur.value).toLocaleString("de-DE")} Sekunden`;
+    set("transitionDuration", +tdur.value);
+  });
+
+  // ---------- Darstellung ----------
+  for (const name of ["fit", "background"]) {
+    document.querySelectorAll(`input[name=${name}]`).forEach((r) => {
+      r.checked = r.value === settings[name];
+      r.addEventListener("change", () => set(name, r.value));
+    });
+  }
+  for (const id of ["kenBurns", "showClock", "showInfo"]) {
+    $(id).checked = settings[id];
+    $(id).addEventListener("change", () => set(id, $(id).checked));
+  }
+
+  // ---------- Steuerung & Live-Status ----------
+  document.querySelectorAll(".player [data-action]").forEach((b) =>
+    b.addEventListener("click", () => fetch("/api/control", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: b.dataset.action }),
+    })));
+  $("playBtn").innerHTML = PAUSE;
+  $("rescan").addEventListener("click", () => fetch("/api/rescan", { method: "POST" }));
+
+  function showNow(msg) {
+    $("playBtn").innerHTML = msg.paused ? PLAY : PAUSE;
+    const p = msg.photo;
+    const preview = $("preview");
+    if (!p) {
+      preview.innerHTML = "";
+      $("nowTitle").textContent = "Kein Foto";
+      $("nowSub").textContent = "";
+      return;
+    }
+    if (preview.dataset.id !== p.id) {
+      preview.dataset.id = p.id;
+      const img = new Image();
+      img.src = p.url;
+      img.alt = "";
+      img.onload = () => {
+        preview.appendChild(img);
+        while (preview.children.length > 2) preview.firstChild.remove();
+      };
+    }
+    $("nowTitle").textContent = p.name;
+    const date = new Date(p.taken).toLocaleDateString("de-DE", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" });
+    $("nowSub").textContent = `${p.folder ? p.folder.split("/").join(" › ") + " · " : ""}${date}${p.exifDate ? "" : " (Dateidatum)"} · ${msg.position} von ${msg.total.toLocaleString("de-DE")}`;
+  }
+
+  let wasScanning = null;
+  function showStatus(s) {
+    const lib = $("libStatus");
+    if (s.error) lib.textContent = s.error;
+    else if (s.scanning) lib.textContent = `Fotos werden eingelesen … ${s.found.toLocaleString("de-DE")} gefunden`;
+    else {
+      const when = s.lastScan ? new Date(s.lastScan).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "–";
+      lib.textContent = `${s.total.toLocaleString("de-DE")} Fotos in der Bibliothek · eingelesen um ${when} Uhr`;
+    }
+    $("frames").textContent = `📺 ${s.frames} ${s.frames === 1 ? "Rahmen" : "Rahmen"} verbunden`;
+    $("rescan").disabled = s.scanning;
+    if (wasScanning && !s.scanning) loadTree();
+    wasScanning = s.scanning;
+  }
+
+  const es = new EventSource("/api/events");
+  es.addEventListener("show", (e) => showNow(JSON.parse(e.data)));
+  es.addEventListener("pause", (e) => { $("playBtn").innerHTML = JSON.parse(e.data).paused ? PLAY : PAUSE; });
+  es.addEventListener("status", (e) => showStatus(JSON.parse(e.data)));
+
+  loadTree();
+})();
+</script>
+</body>
+</html>
