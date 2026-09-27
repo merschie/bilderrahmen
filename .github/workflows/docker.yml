@@ -43,3 +43,13 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Beschreibung auf Docker Hub aktualisieren
+        if: env.CAN_PUSH == 'true' && github.ref == 'refs/heads/main'
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_USERNAME }}/bilderrahmen
+          short-description: "Digitaler Bilderrahmen: synchrone Diashow aus einem Fotoordner, mit Einstellungsseite"
+          readme-filepath: ./README.md
