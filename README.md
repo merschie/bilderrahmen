@@ -42,6 +42,25 @@ Updates gehen ganz normal über „Check for Updates“ im Docker-Tab.
 - **Rahmen:** `http://<unraid-ip>:8080/` auf jedem Anzeigegerät öffnen
 - **Einstellungen:** `http://<unraid-ip>:8080/settings`
 
+## Raspberry Pi als Rahmen
+
+Ein Raspberry Pi mit **Raspberry Pi OS (mit Desktop)** wird mit einem Befehl zum Bilderrahmen:
+Er meldet sich automatisch an, schaltet den Bildschirmschoner ab und öffnet den Rahmen beim
+Start im Vollbild.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/merschie/bilderrahmen/main/raspberry-pi/setup.sh | bash -s -- http://<unraid-ip>:8080/
+```
+
+- Der Pi wartet beim Hochfahren, bis der Server erreichbar ist.
+- Stürzt Chromium ab, startet er nach wenigen Sekunden neu.
+- Adresse ändern: `nano ~/.config/bilderrahmen.conf`
+- Kiosk beenden: `pkill -f bilderrahmen-kiosk; pkill chromium`
+- Wieder entfernen: denselben Befehl mit `--uninstall` statt der Adresse aufrufen.
+
+Pi 3B+, 4 und 5 laufen flüssig. Auf einem Pi Zero 2 W besser die Übergänge „Überblenden“
+oder „Schieben“ wählen.
+
 ## Bedienung am Rahmen
 
 - **Maus bewegen / einmal tippen:** Bedienleiste (zurück, Pause, weiter, Vollbild, Einstellungen)
