@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const { Library } = require("./lib/library");
 const { Settings } = require("./lib/settings");
 const { Slideshow } = require("./lib/slideshow");
+const { Tv } = require("./lib/tv");
 const images = require("./lib/images");
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
@@ -23,6 +24,8 @@ const library = new Library(PHOTO_DIR, path.join(CONFIG_DIR, "photo-cache.json")
 const slideshow = new Slideshow(library, settings, (photo) => {
   if (images.enabled(photo)) images.render(photo, library.abs(photo)).catch(() => {});
 });
+
+const tv = new Tv(settings);
 
 // ---------- Live-Verbindungen (Server-Sent Events) ----------
 const clients = new Set();
@@ -61,6 +64,7 @@ slideshow.on("pause", (msg) => broadcast("pause", msg));
 slideshow.on("status", broadcastStatus);
 library.on("progress", broadcastStatus);
 library.on("updated", () => slideshow.rebuild());
+tv.on("state", (info) => broadcast("tv", info));
 
 // ---------- Passwortschutz für die Einstellungen ----------
 function requireAdmin(req, res, next) {
@@ -93,11 +97,14 @@ app.get("/api/events", (req, res) => {
   clients.add(res);
   send(res, "settings", settings.value);
   send(res, "show", slideshow.message());
+  send(res, "tv", tv.info());
+  tv.setViewers(clients.size);
   broadcastStatus();
   const ping = setInterval(() => res.write(": ping\n\n"), 25000);
   req.on("close", () => {
     clearInterval(ping);
     clients.delete(res);
+    tv.setViewers(clients.size);
     broadcastStatus();
   });
 });
@@ -111,8 +118,18 @@ app.put("/api/settings", requireAdmin, (req, res) => {
   broadcast("settings", value);
   slideshow.rebuild();
   slideshow.schedule(); // neue Anzeigedauer sofort übernehmen
+  tv.update();
   broadcastStatus();
   res.json(value);
+});
+
+app.get("/api/tv/channels", requireAdmin, async (req, res) => {
+  const channels = await tv.loadChannels(req.query.refresh === "1");
+  res.json({
+    host: settings.value.tvHost,
+    error: tv.channelsError,
+    channels: channels.map(({ key, name, group }) => ({ key, name, group })),
+  });
 });
 
 app.post("/api/rescan", requireAdmin, (req, res) => {
@@ -121,8 +138,17 @@ app.post("/api/rescan", requireAdmin, (req, res) => {
 });
 
 // Steuerung ist ohne Passwort erlaubt, damit man am Rahmen selbst wischen kann
-app.post("/api/control", (req, res) => {
+app.post("/api/control", async (req, res) => {
   const action = req.body?.action;
+  // Im Fernsehmodus schalten Vor/Zurück die Sender um
+  if (settings.value.mode === "tv" && (action === "next" || action === "prev")) {
+    const key = await tv.neighbour(action === "next" ? 1 : -1);
+    if (key) {
+      broadcast("settings", settings.update({ tvChannel: key }));
+      tv.update();
+    }
+    return res.json({ ok: true, channel: key });
+  }
   if (action === "next") slideshow.advance(1);
   else if (action === "prev") slideshow.advance(-1);
   else if (action === "pause") slideshow.setPaused(true);
@@ -147,6 +173,10 @@ app.get("/img/:id", async (req, res) => {
   res.sendFile(abs, (err) => err && !res.headersSent && res.status(404).end());
 });
 
+app.use("/tv", express.static(Tv.root, {
+  setHeaders: (res, file) => res.set("Cache-Control", file.endsWith(".m3u8") ? "no-cache" : "max-age=60"),
+}));
+app.get("/vendor/hls.min.js", (req, res) => res.sendFile(require.resolve("hls.js/dist/hls.min.js")));
 app.get("/settings", requireAdmin, (req, res) => res.sendFile(path.join(__dirname, "views", "settings.html")));
 app.use(express.static(path.join(__dirname, "public")));
 

@@ -113,6 +113,7 @@ while true; do
   "$BROWSER" --kiosk --incognito --noerrdialogs --disable-infobars \
     --disable-session-crashed-bubble --disable-features=Translate \
     --password-store=basic --check-for-update-interval=31536000 \
+    --autoplay-policy=no-user-gesture-required \
     "$URL"
   sleep 5
 done

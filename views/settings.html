@@ -137,6 +137,38 @@
   .pills input { display: none; }
   .pills label { padding: .3rem .85rem; border-radius: 999px; cursor: pointer; font-size: .9rem; color: var(--muted); transition: background .15s, color .15s; white-space: nowrap; }
   .pills label:has(input:checked) { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 550; }
+
+  /* ---------- Fernsehen ---------- */
+  body.tv .photo-only, body:not(.tv) .tv-only { display: none; }
+  body.tv .player [data-action=toggle] { display: none; }
+  .preview video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  .preview .note { position: absolute; inset: 0; display: grid; place-items: center; color: #ccc; font-size: .9rem; text-align: center; padding: 1rem; }
+  .host-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .host-row input { flex: 1; min-width: 12rem; }
+  input[type=text], input[type=search] {
+    font: inherit; color: var(--text); background: var(--soft); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: .55rem .8rem; outline: none;
+  }
+  input[type=text]:focus, input[type=search]:focus { border-color: var(--accent); }
+  .btn {
+    font: inherit; font-weight: 550; border: 1.5px solid var(--border); background: var(--card); color: var(--text);
+    border-radius: 10px; padding: .5rem .9rem; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .tv-error { color: #d33; font-size: .9rem; margin: .6rem 0 0; }
+  .channel-tools { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: 1rem 0 .5rem; }
+  .channel-tools input { flex: 1; max-width: 22rem; }
+  .channels { max-height: 380px; overflow: auto; padding-right: .3rem; }
+  .channels h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: .9rem 0 .4rem; }
+  .channel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .4rem; }
+  .channel-grid label {
+    display: flex; align-items: center; gap: .5rem; padding: .5rem .7rem; border-radius: 10px; cursor: pointer;
+    border: 1.5px solid var(--border); font-size: .92rem; transition: border-color .15s, background .15s;
+  }
+  .channel-grid label:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .channel-grid input { display: none; }
+  .channel-grid label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .channel-grid .tag { font-size: .68rem; font-weight: 700; padding: .05rem .35rem; border-radius: 5px; background: var(--soft); color: var(--muted); }
 </style>
 </head>
 <body>
@@ -168,8 +200,39 @@
     </div>
   </section>
 
-  <!-- Ordner -->
+  <!-- Anzeige -->
   <section>
+    <h2>Anzeige</h2>
+    <p class="hint">Was sollen die Rahmen zeigen?</p>
+    <div class="segmented">
+      <label><input type="radio" name="mode" value="photos"><span class="icon">🖼️</span><span><strong>Fotos</strong><small>Diashow aus dem Fotoordner</small></span></label>
+      <label><input type="radio" name="mode" value="tv"><span class="icon">📺</span><span><strong>Fernsehen</strong><small>Live-TV von der Fritz!Box</small></span></label>
+    </div>
+  </section>
+
+  <!-- Fernsehen -->
+  <section class="tv-only">
+    <h2>Fernsehen</h2>
+    <p class="hint">Live-TV von einer Fritz!Box mit Kabel- oder DVB-T-Empfang. Dort muss das TV-Streaming im Heimnetz
+      aktiviert und ein Sendersuchlauf gemacht sein. Private HD-Sender sind meist verschlüsselt und nicht empfangbar.</p>
+    <div class="host-row">
+      <input type="text" id="tvHost" placeholder="Adresse der Fritz!Box, z. B. 192.168.178.1" autocomplete="off" spellcheck="false">
+      <button class="btn" id="tvReload" type="button">Sender laden</button>
+    </div>
+    <p class="tv-error" id="tvError" hidden></p>
+    <div class="channel-tools">
+      <input type="search" id="tvSearch" placeholder="Sender suchen …">
+      <span class="count" id="tvCount"></span>
+    </div>
+    <div class="channels" id="channels"></div>
+    <div class="row" style="margin-top:.6rem">
+      <div class="label"><strong>Ton</strong><span>Wird ein Rahmen ohne Klick geöffnet, startet der Browser evtl. stumm – einmal antippen schaltet den Ton ein.</span></div>
+      <label class="switch"><input type="checkbox" id="tvSound"><span></span></label>
+    </div>
+  </section>
+
+  <!-- Ordner -->
+  <section class="photo-only">
     <h2>Ordner</h2>
     <p class="hint">Welche Ordner sollen gezeigt werden? Ein ausgewählter Ordner schließt alle Unterordner mit ein.</p>
     <div class="tree-wrap"><ul class="tree" id="tree"></ul></div>
@@ -177,7 +240,7 @@
   </section>
 
   <!-- Wiedergabe -->
-  <section>
+  <section class="photo-only">
     <h2>Wiedergabe</h2>
     <p class="hint">Reihenfolge und Anzeigedauer gelten für alle Rahmen gleichzeitig.</p>
     <div class="segmented" id="order">
@@ -196,7 +259,7 @@
   </section>
 
   <!-- Übergang -->
-  <section>
+  <section class="photo-only">
     <h2>Übergang</h2>
     <p class="hint">Fahre mit der Maus über eine Kachel, um die Animation zu sehen.</p>
     <div class="transitions" id="transitions"></div>
@@ -210,7 +273,7 @@
   </section>
 
   <!-- Darstellung -->
-  <section>
+  <section class="photo-only">
     <h2>Darstellung</h2>
     <div class="row">
       <div class="label"><strong>Bildgröße</strong><span>Ganzes Foto zeigen oder Bildschirm ausfüllen</span></div>
@@ -241,6 +304,7 @@
   </section>
 </main>
 
+<script src="/vendor/hls.min.js"></script>
 <script>
 (async function () {
   const $ = (id) => document.getElementById(id);
@@ -264,24 +328,26 @@
   let saveTimer;
   function save() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(async () => {
-      const el = $("saved");
-      try {
-        const res = await fetch("/api/settings", {
-          method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings),
-        });
-        if (!res.ok) throw new Error(res.status);
-        settings = await res.json();
-        el.textContent = "✓ Gespeichert";
-        el.classList.remove("error");
-      } catch (e) {
-        el.textContent = "Speichern fehlgeschlagen";
-        el.classList.add("error");
-      }
-      el.classList.add("visible");
-      clearTimeout(el._t);
-      el._t = setTimeout(() => el.classList.remove("visible"), 1800);
-    }, 350);
+    saveTimer = setTimeout(saveNow, 350);
+  }
+  async function saveNow() {
+    clearTimeout(saveTimer);
+    const el = $("saved");
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings),
+      });
+      if (!res.ok) throw new Error(res.status);
+      settings = await res.json();
+      el.textContent = "✓ Gespeichert";
+      el.classList.remove("error");
+    } catch (e) {
+      el.textContent = "Speichern fehlgeschlagen";
+      el.classList.add("error");
+    }
+    el.classList.add("visible");
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove("visible"), 1800);
   }
   function set(key, value) { settings[key] = value; save(); }
 
@@ -471,7 +537,10 @@
   $("playBtn").innerHTML = PAUSE;
   $("rescan").addEventListener("click", () => fetch("/api/rescan", { method: "POST" }));
 
+  let lastShow = null;
   function showNow(msg) {
+    lastShow = msg;
+    if (settings.mode === "tv") return;
     $("playBtn").innerHTML = msg.paused ? PLAY : PAUSE;
     const p = msg.photo;
     const preview = $("preview");
@@ -481,6 +550,7 @@
       $("nowSub").textContent = "";
       return;
     }
+    preview.querySelector("video, .note")?.remove();
     if (preview.dataset.id !== p.id) {
       preview.dataset.id = p.id;
       const img = new Image();
@@ -511,12 +581,143 @@
     wasScanning = s.scanning;
   }
 
+  // ---------- Fernsehen ----------
+  let channels = [];
+  let tvInfo = null;
+  let previewHls = null;
+  let previewUrl = null;
+
+  function escapeHtml(t) { return String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+
+  function applyMode() {
+    document.body.classList.toggle("tv", settings.mode === "tv");
+    document.querySelectorAll("input[name=mode]").forEach((r) => { r.checked = r.value === settings.mode; });
+    if (settings.mode === "tv") {
+      $("preview").dataset.id = "";
+      showTv(tvInfo);
+      if (!channels.length) loadChannels();
+    } else {
+      stopPreview();
+      if (lastShow) showNow(lastShow);
+    }
+  }
+
+  document.querySelectorAll("input[name=mode]").forEach((r) =>
+    r.addEventListener("change", () => { set("mode", r.value); applyMode(); }));
+
+  $("tvHost").value = settings.tvHost;
+  async function changeHost() {
+    settings.tvHost = $("tvHost").value.trim();
+    await saveNow();
+    $("tvHost").value = settings.tvHost;
+    loadChannels(true);
+  }
+  $("tvHost").addEventListener("change", changeHost);
+  $("tvHost").addEventListener("keydown", (e) => { if (e.key === "Enter") $("tvHost").blur(); });
+  $("tvReload").addEventListener("click", () => loadChannels(true));
+  $("tvSearch").addEventListener("input", renderChannels);
+  $("tvSound").checked = settings.tvSound;
+  $("tvSound").addEventListener("change", () => set("tvSound", $("tvSound").checked));
+
+  async function loadChannels(refresh = false) {
+    if (!settings.tvHost) {
+      channels = [];
+      $("tvError").textContent = "Bitte die Adresse der Fritz!Box eintragen.";
+      $("tvError").hidden = false;
+      renderChannels();
+      return;
+    }
+    $("tvCount").textContent = "Lade Sender …";
+    const data = await fetch("/api/tv/channels" + (refresh ? "?refresh=1" : "")).then((r) => r.json());
+    channels = data.channels;
+    $("tvError").textContent = data.error || "";
+    $("tvError").hidden = !data.error;
+    // Noch kein Sender gewählt: den ersten nehmen
+    if (channels.length && !channels.some((c) => c.key === settings.tvChannel)) set("tvChannel", channels[0].key);
+    renderChannels();
+  }
+
+  function renderChannels() {
+    const q = $("tvSearch").value.trim().toLowerCase();
+    const box = $("channels");
+    box.innerHTML = "";
+    const shown = channels.filter((c) => !q || c.name.toLowerCase().includes(q));
+    $("tvCount").textContent = channels.length ? `${shown.length} von ${channels.length} Sendern` : "";
+    for (const group of ["HD", "SD"]) {
+      const list = shown.filter((c) => c.group === group);
+      if (!list.length) continue;
+      const h = document.createElement("h3");
+      h.textContent = `${group}-Sender`;
+      const grid = document.createElement("div");
+      grid.className = "channel-grid";
+      for (const c of list) {
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="radio" name="channel"><span class="tag">${group}</span><span>${escapeHtml(c.name)}</span>`;
+        const input = label.querySelector("input");
+        input.checked = c.key === settings.tvChannel;
+        input.addEventListener("change", () => set("tvChannel", c.key));
+        grid.appendChild(label);
+      }
+      box.append(h, grid);
+    }
+  }
+
+  function stopPreview() {
+    if (previewHls) { previewHls.destroy(); previewHls = null; }
+    previewUrl = null;
+    $("preview").querySelector("video")?.remove();
+  }
+
+  function previewNote(text) {
+    const preview = $("preview");
+    stopPreview();
+    preview.querySelectorAll("img, .note").forEach((n) => n.remove());
+    const note = document.createElement("div");
+    note.className = "note";
+    note.textContent = text;
+    preview.appendChild(note);
+  }
+
+  function showTv(info) {
+    tvInfo = info;
+    if (settings.mode !== "tv") return;
+    const name = info?.channel?.name || "Fernsehen";
+    $("nowTitle").textContent = name;
+    if (info?.state === "playing") {
+      $("nowSub").textContent = info.transcode ? "Live · wird umgerechnet (SD)" : "Live · direkt übertragen";
+      if (previewUrl !== info.url && window.Hls?.isSupported()) {
+        const preview = $("preview");
+        stopPreview();
+        preview.querySelectorAll("img, .note").forEach((n) => n.remove());
+        const video = document.createElement("video");
+        video.muted = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        preview.appendChild(video);
+        previewHls = new Hls({ liveSyncDurationCount: 3, maxBufferLength: 10 });
+        previewHls.loadSource(info.url);
+        previewHls.attachMedia(video);
+        previewUrl = info.url;
+      }
+    } else {
+      $("nowSub").textContent = info?.message || "";
+      previewNote(info?.state === "starting" ? "wird eingeschaltet …" : info?.state === "error" ? "Kein Empfang" : "📺");
+    }
+  }
+
   const es = new EventSource("/api/events");
+  es.addEventListener("tv", (e) => showTv(JSON.parse(e.data)));
+  es.addEventListener("settings", (e) => {
+    const s = JSON.parse(e.data);
+    // Senderwechsel von einem Rahmen aus (Wischen) in der Liste nachziehen
+    if (s.tvChannel !== settings.tvChannel) { settings.tvChannel = s.tvChannel; renderChannels(); }
+  });
   es.addEventListener("show", (e) => showNow(JSON.parse(e.data)));
   es.addEventListener("pause", (e) => { $("playBtn").innerHTML = JSON.parse(e.data).paused ? PLAY : PAUSE; });
   es.addEventListener("status", (e) => showStatus(JSON.parse(e.data)));
 
   loadTree();
+  applyMode();
 })();
 </script>
 </body>

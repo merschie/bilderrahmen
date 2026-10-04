@@ -11,6 +11,8 @@ z. B. auf alten Tablets, einem Raspberry Pi am Monitor oder einem Smart-TV.
   zufällig wechselnd, dazu optional eine langsame Kamerafahrt (Ken-Burns-Effekt).
 - Aufnahmedatum wird aus den EXIF-Daten gelesen (sonst Dateidatum).
 - Große Fotos werden serverseitig verkleinert und richtig gedreht → flüssig auch auf schwachen Geräten.
+- **Fernsehen:** Statt Fotos kann auch ein Live-TV-Sender von einer Fritz!Box mit Kabel- oder
+  DVB-T-Tuner laufen (siehe unten).
 
 ## Installation auf Unraid
 
@@ -60,6 +62,23 @@ curl -fsSL https://raw.githubusercontent.com/merschie/bilderrahmen/main/raspberr
 
 Pi 3B+, 4 und 5 laufen flüssig. Auf einem Pi Zero 2 W besser die Übergänge „Überblenden“
 oder „Schieben“ wählen.
+
+## Fernsehen (Fritz!Box)
+
+In den Einstellungen unter **Anzeige → Fernsehen** die Adresse der Fritz!Box eintragen
+(z. B. `192.168.178.1`) und einen Sender wählen. Alle Rahmen zeigen denselben Sender.
+
+- Voraussetzung: Fritz!Box mit Kabel- (DVB-C) oder DVB-T-Tuner, TV-Streaming im Heimnetz
+  aktiviert, Sendersuchlauf durchgeführt.
+- HD-Sender werden direkt durchgereicht (kaum CPU-Last), SD-Sender werden entflochten und neu
+  kodiert (etwa ein Drittel eines CPU-Kerns).
+- Ein Tuner der Fritz!Box wird nur belegt, solange ein Rahmen oder die Einstellungsseite geöffnet
+  ist. Eine Minute nach dem Schließen wird er wieder freigegeben.
+- Am Rahmen schalten **← / →** oder **Wischen** den Sender um, **Leertaste / M** schaltet den Ton
+  dieses Rahmens stumm.
+- Browser erlauben Ton oft erst nach einem Klick. Ein Rahmen startet dann stumm und zeigt
+  „Tippen für Ton“. Der Raspberry-Pi-Kiosk startet direkt mit Ton.
+- Private HD-Sender sind im Kabelnetz meist verschlüsselt und können nicht empfangen werden.
 
 ## Bedienung am Rahmen
 

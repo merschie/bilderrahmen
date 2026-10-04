@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-RUN apk add --no-cache su-exec
+RUN apk add --no-cache su-exec ffmpeg
 
 WORKDIR /app
 ENV NODE_ENV=production \
