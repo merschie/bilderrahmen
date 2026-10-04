@@ -163,6 +163,18 @@ Exec=$KIOSK
 X-GNOME-Autostart-enabled=true
 EOF
 
+# Ton über HDMI (Monitor/Fernseher) statt über die Kopfhörerbuchse – beim Pi 3 ist sonst die Buchse eingestellt
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+if command -v wpctl >/dev/null; then
+  hdmi="$(wpctl status 2>/dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -i '(HDMI)' | grep -o '[0-9]\+\.' | head -1 | tr -d .)"
+  if [ -n "$hdmi" ] && wpctl set-default "$hdmi" 2>/dev/null; then
+    wpctl set-volume "$hdmi" 1.0 2>/dev/null || true
+    info "Ton läuft über HDMI (Lautstärke am Monitor regeln)."
+  else
+    warn "Kein HDMI-Tonausgang gefunden – ggf. im Lautsprecher-Menü oben rechts auswählen."
+  fi
+fi
+
 if [ "${XDG_SESSION_DESKTOP:-}" = "wayfire" ] || pgrep -x wayfire >/dev/null; then
   warn "Wayfire erkannt: Bitte in 'sudo raspi-config' → Advanced Options → Wayland auf 'labwc' umstellen."
 fi
