@@ -80,6 +80,14 @@ In den Einstellungen unter **Anzeige → Fernsehen** die Adresse der Fritz!Box e
   „Tippen für Ton“. Der Raspberry-Pi-Kiosk startet direkt mit Ton.
 - Private HD-Sender sind im Kabelnetz meist verschlüsselt und können nicht empfangen werden.
 
+### Fritz!Box in einem anderen Netz (VPN): Relay
+
+Die Fritz!Box sendet Fernsehen per UDP. Über VPN oder Internet gehen dabei Pakete verloren – das
+Bild stockt und zeigt Würfel. Abhilfe: Im Netz der Fritz!Box läuft ein zweiter Bilderrahmen-Container
+(Fotoordner nicht nötig). Er nimmt den Sender dort verlustfrei entgegen und reicht ihn per TCP weiter.
+In den Einstellungen unter *Fernsehen → Fritz!Box in einem anderen Netz?* dessen Adresse eintragen,
+z. B. `192.168.177.80:8080`. Das Relay rechnet nichts um und läuft auch auf einem Raspberry Pi.
+
 ## Bedienung am Rahmen
 
 - **Maus bewegen / einmal tippen:** Bedienleiste (zurück, Pause, weiter, Vollbild, Einstellungen)

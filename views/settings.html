@@ -155,6 +155,10 @@
     border-radius: 10px; padding: .5rem .9rem; cursor: pointer;
   }
   .btn:hover { border-color: var(--accent); }
+  .relay { margin-top: .8rem; }
+  .relay summary { cursor: pointer; color: var(--accent); font-weight: 550; font-size: .92rem; }
+  .relay .hint { margin: .5rem 0; color: var(--muted); font-size: .88rem; }
+  .relay input { width: 100%; }
   .tv-error { color: #d33; font-size: .9rem; margin: .6rem 0 0; }
   .channel-tools { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: 1rem 0 .5rem; }
   .channel-tools input { flex: 1; max-width: 22rem; }
@@ -219,6 +223,13 @@
       <input type="text" id="tvHost" placeholder="Adresse der Fritz!Box, z. B. 192.168.178.1" autocomplete="off" spellcheck="false">
       <button class="btn" id="tvReload" type="button">Sender laden</button>
     </div>
+    <details class="relay" id="relayBox">
+      <summary>Fritz!Box in einem anderen Netz (z. B. per VPN)?</summary>
+      <p class="hint">Über VPN oder Internet gehen beim Fernsehen Pakete verloren – das Bild stockt und zeigt Würfel.
+        Läuft im Netz der Fritz!Box ein weiterer Bilderrahmen-Container, nimmt er den Sender dort entgegen und reicht ihn
+        verlustfrei weiter. Dann hier seine Adresse eintragen.</p>
+      <input type="text" id="tvRelay" placeholder="Relay, z. B. 192.168.177.80:8080 (leer = direkt)" autocomplete="off" spellcheck="false">
+    </details>
     <p class="tv-error" id="tvError" hidden></p>
     <div class="channel-tools">
       <input type="search" id="tvSearch" placeholder="Sender suchen …">
@@ -613,6 +624,15 @@
     loadChannels(true);
   }
   $("tvHost").addEventListener("change", changeHost);
+  $("tvRelay").value = settings.tvRelay || "";
+  $("relayBox").open = Boolean(settings.tvRelay);
+  $("tvRelay").addEventListener("change", async () => {
+    settings.tvRelay = $("tvRelay").value.trim();
+    await saveNow();
+    $("tvRelay").value = settings.tvRelay;
+    loadChannels(true);
+  });
+  $("tvRelay").addEventListener("keydown", (e) => { if (e.key === "Enter") $("tvRelay").blur(); });
   $("tvHost").addEventListener("keydown", (e) => { if (e.key === "Enter") $("tvHost").blur(); });
   $("tvReload").addEventListener("click", () => loadChannels(true));
   $("tvSearch").addEventListener("input", renderChannels);

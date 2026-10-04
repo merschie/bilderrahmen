@@ -8,7 +8,7 @@ const crypto = require("crypto");
 const { Library } = require("./lib/library");
 const { Settings } = require("./lib/settings");
 const { Slideshow } = require("./lib/slideshow");
-const { Tv } = require("./lib/tv");
+const { Tv, relayStream } = require("./lib/tv");
 const images = require("./lib/images");
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
@@ -124,10 +124,10 @@ app.put("/api/settings", requireAdmin, (req, res) => {
 });
 
 app.get("/api/tv/channels", requireAdmin, async (req, res) => {
-  const channels = await tv.loadChannels(req.query.refresh === "1");
+  const [channels, relayError] = await Promise.all([tv.loadChannels(req.query.refresh === "1"), tv.checkRelay()]);
   res.json({
     host: settings.value.tvHost,
-    error: tv.channelsError,
+    error: [tv.channelsError, relayError].filter(Boolean).join(" ") || null,
     channels: channels.map(({ key, name, group }) => ({ key, name, group })),
   });
 });
@@ -172,6 +172,10 @@ app.get("/img/:id", async (req, res) => {
   }
   res.sendFile(abs, (err) => err && !res.headersSent && res.status(404).end());
 });
+
+// Relay: dieser Container reicht Fritz!Box-Streams aus seinem Netz an einen anderen Bilderrahmen weiter
+app.get("/relay/ping", (req, res) => res.json({ ok: true }));
+app.get("/relay/stream", relayStream);
 
 app.use("/tv", express.static(Tv.root, {
   setHeaders: (res, file) => res.set("Cache-Control", file.endsWith(".m3u8") ? "no-cache" : "max-age=60"),
