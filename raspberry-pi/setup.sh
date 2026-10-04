@@ -30,6 +30,18 @@ ask() {
 
 [ "$(id -u)" -ne 0 ] || die "Bitte als normaler Benutzer ausführen, nicht mit sudo."
 
+# sudo nur, wenn es ohne Passwort geht oder ein Terminal für die Passworteingabe da ist
+as_root() {
+  if sudo -n true 2>/dev/null; then
+    sudo "$@"
+  elif { true </dev/tty; } 2>/dev/null; then
+    sudo "$@" </dev/tty
+  else
+    warn "Übersprungen (sudo braucht ein Passwort, aber es gibt kein Terminal): $*"
+    return 1
+  fi
+}
+
 uninstall() {
   pkill -f "$KIOSK" 2>/dev/null || true
   pkill -f "chromium.*--kiosk" 2>/dev/null || true
@@ -75,8 +87,8 @@ find_browser() { command -v chromium || command -v chromium-browser || true; }
 BROWSER="$(find_browser)"
 if [ -z "$BROWSER" ]; then
   info "Installiere Chromium …"
-  sudo apt-get update -q
-  sudo apt-get install -y chromium || sudo apt-get install -y chromium-browser
+  as_root apt-get update -q || true
+  as_root apt-get install -y chromium || as_root apt-get install -y chromium-browser || true
   BROWSER="$(find_browser)"
   [ -n "$BROWSER" ] || die "Chromium konnte nicht installiert werden."
 fi
@@ -94,9 +106,13 @@ fi
 # ---------- Automatische Anmeldung & kein Bildschirmschoner ----------
 if command -v raspi-config >/dev/null; then
   info "Aktiviere automatische Anmeldung am Desktop …"
-  sudo raspi-config nonint do_boot_behaviour B4
-  info "Schalte Bildschirmschoner ab …"
-  sudo raspi-config nonint do_blanking 1
+  as_root raspi-config nonint do_boot_behaviour B4 || true
+  if [ "$(raspi-config nonint get_blanking 2>/dev/null)" = "1" ]; then
+    info "Bildschirmschoner ist bereits aus."
+  else
+    info "Schalte Bildschirmschoner ab …"
+    as_root raspi-config nonint do_blanking 1 || true
+  fi
 else
   warn "raspi-config nicht gefunden – automatische Anmeldung und Bildschirmschoner bitte selbst einstellen."
 fi
@@ -158,5 +174,5 @@ echo "    Entfernen:       dieses Skript mit --uninstall aufrufen"
 
 case "$(ask "Jetzt neu starten? [J/n] " n)" in
   n|N|nein|Nein) echo "Der Rahmen startet beim nächsten Neustart." ;;
-  *) sudo reboot ;;
+  *) as_root reboot || true ;;
 esac
