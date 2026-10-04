@@ -22,7 +22,7 @@ fs.mkdirSync(CONFIG_DIR, { recursive: true });
 const settings = new Settings(path.join(CONFIG_DIR, "settings.json"));
 const library = new Library(PHOTO_DIR, path.join(CONFIG_DIR, "photo-cache.json"));
 const slideshow = new Slideshow(library, settings, (photo) => {
-  if (images.enabled(photo)) images.render(photo, library.abs(photo)).catch(() => {});
+  if (images.enabled(photo)) images.prepare(photo, library.abs(photo));
 });
 
 const tv = new Tv(settings);
@@ -165,7 +165,8 @@ app.get("/img/:id", async (req, res) => {
   res.set("Cache-Control", "public, max-age=604800, immutable");
   if (images.enabled(photo)) {
     try {
-      return res.type("jpeg").send(await images.render(photo, abs));
+      const options = { size: images.sizeFor(req.query.w), background: req.query.bg === "1" };
+      return res.type("jpeg").send(await images.render(photo, abs, options));
     } catch (e) {
       console.warn(`Bild konnte nicht verkleinert werden (${photo.rel}): ${e.message}`);
     }

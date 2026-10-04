@@ -82,6 +82,15 @@ if [ -z "$BROWSER" ]; then
 fi
 info "Browser: $BROWSER"
 
+# Raspberry Pi 3 und älter (Grafikchip VideoCore IV, nur OpenGL ES 2.0): Chromium stürzt im Vollbild
+# mit Grafikfehlern ab und zeigt nur Schwarz. Bildinhalte dann per CPU zeichnen lassen.
+EXTRA_FLAGS=""
+render_driver="$(basename "$(readlink -f /sys/class/drm/renderD128/device/driver 2>/dev/null)" 2>/dev/null || true)"
+if [ -n "$render_driver" ] && [ "$render_driver" != "v3d" ]; then
+  EXTRA_FLAGS="--disable-gpu-rasterization"
+  info "Älterer Grafikchip ($render_driver) erkannt – angepasste Darstellung für Chromium."
+fi
+
 # ---------- Automatische Anmeldung & kein Bildschirmschoner ----------
 if command -v raspi-config >/dev/null; then
   info "Aktiviere automatische Anmeldung am Desktop …"
@@ -94,7 +103,7 @@ fi
 
 # ---------- Startskript ----------
 mkdir -p "$(dirname "$KIOSK")" "$(dirname "$CONF")"
-printf "URL='%s'\nBROWSER='%s'\n" "$URL" "$BROWSER" > "$CONF"
+printf "URL='%s'\nBROWSER='%s'\nEXTRA_FLAGS='%s'\n" "$URL" "$BROWSER" "$EXTRA_FLAGS" > "$CONF"
 
 cat > "$KIOSK" <<'EOF'
 #!/bin/sh
@@ -113,8 +122,8 @@ while true; do
   "$BROWSER" --kiosk --incognito --noerrdialogs --disable-infobars \
     --disable-session-crashed-bubble --disable-features=Translate \
     --password-store=basic --check-for-update-interval=31536000 \
-    --autoplay-policy=no-user-gesture-required \
-    "$URL"
+    --autoplay-policy=no-user-gesture-required --lang=de \
+    $EXTRA_FLAGS "$URL"
   sleep 5
 done
 EOF

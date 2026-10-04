@@ -1,7 +1,8 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" translate="no">
 <head>
 <meta charset="utf-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,12 +21,9 @@
     position: absolute; inset: 0; overflow: hidden; background: #000;
     animation-duration: var(--td); animation-fill-mode: both;
     animation-timing-function: cubic-bezier(.45, 0, .2, 1);
-    will-change: transform, opacity;
   }
-  .slide .bg {
-    position: absolute; inset: -60px; background-size: cover; background-position: center;
-    filter: blur(40px) brightness(.45) saturate(1.2); transform: scale(1.15);
-  }
+  /* Unscharfer Hintergrund: kommt winzig und vorgefiltert vom Server, hier nur hochskaliert */
+  .slide .bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
   .no-bg .slide .bg, .fit-cover .slide .bg { display: none; }
   .slide img {
     position: absolute; inset: 0; width: 100%; height: 100%; object-fit: var(--fit);
@@ -177,6 +175,10 @@
   let wantedSeq = -1;      // zuletzt empfangene Nachricht
   let lastShow = null;
   let status = { scanning: true, found: 0, total: 0, selected: 0 };
+  // Fotos in Bildschirmgröße anfordern – spart Grafikspeicher auf schwachen Geräten
+  const SCREEN_PX = Math.round(Math.max(screen.width, screen.height) * (window.devicePixelRatio || 1));
+  const sized = (url) => `${url}&w=${SCREEN_PX}`;
+  const background = (url) => `${url}&bg=1`;
 
   // ---------- Einstellungen anwenden ----------
   function applySettings(s) {
@@ -239,7 +241,7 @@
     if (msg.seq === shownSeq) return;
 
     try {
-      await preload(msg.photo.url);
+      await preload(sized(msg.photo.url));
     } catch {
       return; // Bild nicht ladbar – das nächste kommt vom Server
     }
@@ -253,9 +255,9 @@
     slide.className = first ? "slide enter-fade" : `slide enter-${t}`;
     const bg = document.createElement("div");
     bg.className = "bg";
-    bg.style.backgroundImage = `url("${msg.photo.url}")`;
+    bg.style.backgroundImage = `url("${background(msg.photo.url)}")`;
     const img = document.createElement("img");
-    img.src = msg.photo.url;
+    img.src = sized(msg.photo.url);
     img.alt = "";
     img.className = msg.kenBurns.zoomIn ? "kb-in" : "kb-out";
     img.style.setProperty("--kx", msg.kenBurns.x + "%");
@@ -275,7 +277,10 @@
     shownSeq = msg.seq;
     updateInfo(msg.photo, true);
 
-    if (msg.next) preload(msg.next.url).catch(() => {});
+    if (msg.next) {
+      preload(sized(msg.next.url)).catch(() => {});
+      if (settings?.fit === "contain" && settings?.background !== "black") preload(background(msg.next.url)).catch(() => {});
+    }
   }
 
   function formatTaken(photo) {
