@@ -133,13 +133,38 @@ flock -n 9 || exit 0
 # Warten, bis Netzwerk und Server da sind
 until curl -s -o /dev/null --max-time 5 "$URL"; do sleep 3; done
 
-# Chromium nach Absturz oder Beenden automatisch neu starten
+# Port des Servers – der Rahmen hält dorthin dauerhaft eine Verbindung offen (/api/events)
+hostport="$(printf '%s' "$URL" | sed -E 's#^[a-z]+://##; s#/.*##')"
+case "$hostport" in
+  *:*) PORT="${hostport##*:}" ;;
+  *) case "$URL" in https://*) PORT=443 ;; *) PORT=80 ;; esac ;;
+esac
+
+# Chromium nach Absturz oder Beenden automatisch neu starten. Hängt die Seite (grauer Bildschirm,
+# keine Verbindung zum Server, obwohl er erreichbar ist), wird Chromium nach 3 Minuten neu gestartet.
 while true; do
   "$BROWSER" --kiosk --incognito --noerrdialogs --disable-infobars \
     --disable-session-crashed-bubble --disable-features=Translate \
     --password-store=basic --check-for-update-interval=31536000 \
     --autoplay-policy=no-user-gesture-required --lang=de \
-    $EXTRA_FLAGS "$URL"
+    $EXTRA_FLAGS "$URL" 9>&- &
+  pid=$!
+  misses=0
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep 60
+    if [ -n "$(ss -Htn state established "( dport = :$PORT )" 2>/dev/null)" ]; then
+      misses=0
+    elif curl -s -o /dev/null --max-time 5 "$URL"; then
+      misses=$((misses + 1))
+      if [ "$misses" -ge 3 ]; then
+        logger -t bilderrahmen "Keine Verbindung zum Server – Chromium wird neu gestartet" 2>/dev/null || true
+        kill "$pid" 2>/dev/null
+        sleep 10
+        kill -9 "$pid" 2>/dev/null
+      fi
+    fi
+  done
+  wait "$pid" 2>/dev/null
   sleep 5
 done
 EOF
